@@ -166,7 +166,36 @@
     
     asyncio.run(async_main())
 ```
+### Alembic
+Alembic — это инструмент для управления миграциями базы данных в SQLAlchemy. Он позволяет легко обновлять структуру базы данных без необходимости вручную изменять SQL-таблицы.
+````
+    pip install alembic
+````
+После установки необходимо инициализировать Alembic в вашем проекте:
+````
+    alembic init alembic
+````
+Создание первой миграции
+````
+from sqlalchemy import Column, Integer, String, create_engine
+from sqlalchemy.ext.declarative import declarative_base
 
+Base = declarative_base()
+
+class User(Base):
+    __tablename__ = 'users'
+    id = Column(Integer, primary_key=True)
+    name = Column(String)
+
+engine = create_engine('sqlite:///example.db')
+Base.metadata.create_all(engine)
+
+alembic revision --autogenerate -m "Добавление таблицы users"
+````
+Если нужно откатить изменения:
+````
+    alembic downgrade -1
+````
 ### Redis
 ```
     pip3 install redis
