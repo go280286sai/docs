@@ -1399,7 +1399,19 @@ ___
     print(ob2.name)  # Вывод: Test
     print(ob1 is ob2)  # Вывод: True (один и тот же объект)
 ```
+### Numba — это мощная библиотека для Python, которая позволяет значительно ускорять выполнение кода за счёт Just-In-Time (JIT) компиляции. Она особенно полезна для вычислений с большими массивами данных и научных вычислений.
+````
+    from numba import jit
+    import time
 
+    # Сложная функция: сумма квадратов
+    @jit  # ускоряет выполнение
+    def slow_function(n):
+        total = 0
+        for i in range(n):
+            total += i ** 2
+        return total
+````
 ### Enum
 ```
     from enum import Enum, auto
