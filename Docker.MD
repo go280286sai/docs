@@ -1,5 +1,5 @@
 ### Структура проекта
-    ````
+````
     ├── myproject/
     │   ├── manage.py
     │   ├── myproject/
@@ -15,7 +15,7 @@
     ├── requirements.txt
     ├── nginx.conf
     └── docker-compose.yml
-    ````
+````
 ### Dockerfile для Django-приложения
 ````
     # Используем официальный образ Python
