@@ -124,6 +124,26 @@ async def main():
 if __name__ == "__main__":
     asyncio.run(main())
 ````
+
+#### MediaGroup
+````
+from aiogram.utils.media_group import MediaGroupBuilder
+from aiogram.types import Message, FSInputFile
+
+@dp.message(CommandStart())
+async def echo(message: Message, state: FSMContext):
+    media = MediaGroupBuilder()
+    media.add_document(FSInputFile("read.txt"))
+    media.add_document(FSInputFile("read2.txt"))
+    await message.answer_media_group(media=media.build())
+````
+
+#### Download photo
+````
+@dp.message(F.photo)
+async def download_photo(message: Message, bot: Bot):
+    await bot.download(message.photo[-1], destination=f"{message.photo[-1].file_id}.jpg")
+````
 ### Excel
 ````
     pip install openpyxl
