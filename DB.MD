@@ -152,9 +152,11 @@
     from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
     from sqlalchemy.orm import sessionmaker
     from sqlalchemy import text
-    
+    if platform.system() == "Windows":
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
     # Создание асинхронного подключения к SQLite
     engine = create_async_engine("sqlite+aiosqlite:///example.db", echo=True)
+    # engine = create_async_engine("postgresql+psycopg:///example.db", echo=True)
     AsyncSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
     
     async def async_main():
