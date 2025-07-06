@@ -94,3 +94,13 @@
     
     test_my_method()
 ````
+
+### Степень покрытия тестов
+
+````
+pip install pytest-cov
+````
+#### Запуск тестов с покрытием
+````
+pytest --cov=app --cov-report=term-missing
+````
