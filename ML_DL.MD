@@ -1,4 +1,129 @@
 ### Anomaly 
+#### zscore
+````
+from scipy.stats import zscore
+import numpy as np
+
+# Вычисляем среднее значение давления
+m = data_train['pressure'].mean()
+
+# Вычисляем Z-оценки
+z_scores = zscore(data_train['pressure'])
+
+# Заменяем выбросы (где |z| > 3) на округлённое среднее
+data_train.loc[np.abs(z_scores) > 3, 'pressure'] = round(m, 0)
+````
+### sklearn.multioutput
+````
+это модуль в Scikit-learn, предназначенный для решения многовыходных задач, где модель должна предсказать несколько целевых переменных одновременно. Это особенно полезно, когда:
+Целевые переменные связаны между собой
+Хочется использовать одну модель вместо нескольких
+Применяется в задачах классификации, регрессии, NLP и даже в рекомендательных системах
+````
+#### MultiOutputRegressor
+````
+from sklearn.datasets import make_regression
+from sklearn.multioutput import MultiOutputRegressor
+from sklearn.linear_model import LinearRegression
+from sklearn.model_selection import train_test_split
+
+# Генерация данных с двумя выходами
+X, y = make_regression(n_samples=100, n_features=5, n_targets=2, noise=0.1, random_state=42)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
+
+# Оборачиваем линейную регрессию
+model = MultiOutputRegressor(LinearRegression())
+model.fit(X_train, y_train)
+
+# Предсказание
+y_pred = model.predict(X_test)
+print(y_pred[:5])
+````
+#### MultiOutputClassifier
+````
+from sklearn.datasets import make_multilabel_classification
+from sklearn.multioutput import MultiOutputClassifier
+from sklearn.ensemble import RandomForestClassifier
+
+# Многометочная классификация
+X, y = make_multilabel_classification(n_samples=100, n_features=20, n_classes=3, random_state=42)
+
+model = MultiOutputClassifier(RandomForestClassifier())
+model.fit(X, y)
+
+y_pred = model.predict(X)
+print(y_pred[:5])
+````
+#### RegressorChain
+````
+from sklearn.multioutput import RegressorChain
+
+base_model = LinearRegression()
+chain_model = RegressorChain(base_model, order=[0, 1])  # сначала y1, потом y2
+chain_model.fit(X_train, np.column_stack((y1_train, y2_train)))
+
+y_pred_chain = chain_model.predict(X_test)
+````
+#### ClassifierChain
+````
+from sklearn.multioutput import ClassifierChain
+from sklearn.linear_model import LogisticRegression
+from sklearn.datasets import make_classification
+from sklearn.model_selection import train_test_split
+import numpy as np
+
+# Создаём фичи и первую целевую переменную
+X, y_main = make_classification(n_samples=200, n_features=20, n_classes=2, random_state=42)
+
+# Создаём вторую целевую переменную вручную
+y_aux = np.random.randint(0, 2, size=200)
+
+# Объединяем обе целевые переменные
+Y = np.column_stack((y_main, y_aux))  # shape = (200, 2)
+
+# Разделяем на train/test
+X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.2, random_state=42)
+
+# Обучаем цепочку классификаторов
+model = ClassifierChain(LogisticRegression(), order=[0, 1])
+model.fit(X_train, Y_train)
+
+# Предсказание
+y_pred = model.predict(X_test)
+print(y_pred[:5])
+````
+### LDA
+````
+* Снижает размерность признаков, сохраняя информацию, важную для различия между классами.
+* Строит линейные границы между классами, используя вероятностную модель.
+* Максимизирует отношение межклассовой дисперсии к внутриклассовой.
+Основные параметры
+Параметр	            Описание
+solver	            Алгоритм решения: 'svd', 'lsqr', 'eigen'
+shrinkage	        Регуляризация (для 'lsqr' и 'eigen')
+n_components	    Кол-во компонент для снижения размерности
+priors           	Предварительные вероятности классов
+store_covariance	Сохранять ковариационные матрицы
+
+from sklearn.datasets import load_iris
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score
+
+# Загружаем данные
+X, y = load_iris(return_X_y=True)
+
+# Разделяем на train/test
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
+
+# Обучаем LDA
+lda = LinearDiscriminantAnalysis()
+lda.fit(X_train, y_train)
+
+# Предсказание
+y_pred = lda.predict(X_test)
+print("Accuracy:", accuracy_score(y_test, y_pred))
+````
 #### Стандартный boxplot
 ````
     plt.figure(figsize=(10, 6))  # Оптимальный размер для анализа
@@ -28,8 +153,41 @@ outlier_values = data.loc[outlier_indices, 'Age']
 
 print(f"Индексы выбросов: {outlier_indices}")
 print(f"Значения выбросов: \n{outlier_values}")
-````
 
+# quantile
+import numpy as np
+
+q_low, q_high = df["salary"].quantile([0.01, 0.99])
+df["salary"] = np.clip(df["salary"], q_low, q_high)
+
+````
+### StackingClassifier
+````
+Ансамблевый метод машинного обучения, который объединяет несколько моделей (базовых) и обучает финальную модель на их предсказаниях. Его цель — повысить точность и устойчивость модели за счёт комбинирования сильных сторон разных алгоритмов.
+
+from sklearn.ensemble import StackingClassifier, RandomForestClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.svm import SVC
+from sklearn.tree import DecisionTreeClassifier
+
+models = [
+    ('lr', LogisticRegression()),
+    ('svc', SVC(probability=True)),
+    ('dt', DecisionTreeClassifier())
+]
+
+stacking_model = StackingClassifier(
+    estimators=models,
+    final_estimator=RandomForestClassifier(
+        max_depth=11,
+        n_estimators=200,
+        random_state=42,
+        criterion="gini"
+    ),
+    cv=5,
+    passthrough=True
+)
+````
 ### XGBOOST
 ````
     pip install xgboost
@@ -131,7 +289,24 @@ reg_alpha, reg_lambda  L1 и L2 регуляризация
     xgb.plot_importance(model)
     plt.show()
 ````
-
+````
+    from sklearn.ensemble import RandomForestClassifier
+    import pandas as pd
+    
+    model = RandomForestClassifier()
+    model.fit(X, y)
+    
+    importance = pd.Series(model.feature_importances_, index=X.columns)
+    print(importance.sort_values(ascending=False))
+````
+#### Permutation Importance (перестановочная важность)
+````
+    from sklearn.inspection import permutation_importance
+    
+    result = permutation_importance(model, X, y, n_repeats=10, random_state=42)
+    importance = pd.Series(result.importances_mean, index=X.columns)
+    print(importance.sort_values(ascending=False))
+````
 #### Работа с xgb.DMatrix
 ````
     dtrain = xgb.DMatrix(X_train, label=y_train)
@@ -381,7 +556,186 @@ y_pred_ensemble = model.predict(X_test)
 df_result = pd.DataFrame({'PassengerId': idx, 'Survived': y_pred_ensemble})
 df_result.to_csv("result.csv", index=False)
 ````
+### Streamlit
+````
+Быстрое развертывание ML-моделей
+pip install streamlit
+[https://streamlit.io/](https://streamlit.io/)
 
+import streamlit as st
+import pandas as pd
+
+st.title("Анализ продаж")
+df = pd.read_csv("sales.csv")
+st.line_chart(df)
+````
+### VarianceThreshold
+````
+Если столбец содержит одно и то же значение во всех строках, он не помогает модели отличать объекты
+from sklearn.feature_selection import VarianceThreshold
+
+X = [
+    [0, 1, 0],
+    [1, 1, 0],
+    [0, 1, 1],
+    [1, 1, 1]
+]
+
+selector = VarianceThreshold(threshold=0.5)
+X_new = selector.fit_transform(X)
+
+print(X_new)
+# Вывод: [[0], [1], [0], [1]]
+* Не учитывает целевую переменную y, поэтому может удалить признаки, которые всё же полезны для предсказания.
+* Не выявляет коррелированные признаки — только "плоские".
+````
+### DummyClassifier
+````
+Оценка на несбалансированных данных: например, если 90% объектов — один класс, DummyClassifier покажет, как легко получить высокую точность, просто предсказывая этот класс.
+
+most_frequent	Всегда предсказывает самый частый класс в y_train.
+prior	        То же, что most_frequent, но predict_proba возвращает распределение.
+stratified	    Случайное предсказание по распределению классов в y_train.
+uniform	        Случайное предсказание с равной вероятностью для всех классов.
+constant     	Всегда предсказывает заданный класс.
+
+from sklearn.dummy import DummyClassifier
+from sklearn.metrics import accuracy_score
+from sklearn.model_selection import train_test_split
+
+# Примерные данные
+X = [[1], [2], [3], [4]]
+y = [0, 0, 1, 1]
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=42)
+
+# Создаём DummyClassifier
+dummy = DummyClassifier(strategy="most_frequent")
+dummy.fit(X_train, y_train)
+
+# Предсказание и оценка
+y_pred = dummy.predict(X_test)
+print("Accuracy:", accuracy_score(y_test, y_pred))
+````
+### Gaussian Naive Bayes
+````
+from sklearn.naive_bayes import GaussianNB
+
+model = GaussianNB()
+model.fit(X_train, y_train)
+
+# Предсказание
+y_pred = model.predict(X_test)
+
+# Вероятности
+probs = model.predict_proba(X_test)
+````
+### CalibratedClassifierCV
+````
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.calibration import CalibratedClassifierCV
+from sklearn.model_selection import train_test_split
+from sklearn.datasets import make_classification
+
+# Данные
+X, y = make_classification(n_samples=1000, n_features=20, random_state=42)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
+
+# Базовый классификатор
+base_clf = RandomForestClassifier()
+
+# Калибровка
+calibrated_clf = CalibratedClassifierCV(base_estimator=base_clf, method='sigmoid', cv=5)
+calibrated_clf.fit(X_train, y_train)
+
+# Предсказания
+probs = calibrated_clf.predict_proba(X_test)
+````
+### SelectKBest
+````
+* Оценивает каждый признак индивидуально с помощью заданной функции оценки (score_func)
+* Выбирает K признаков с наивысшими оценками
+* Используется для снижения размерности, улучшения производительности модели и уменьшения переобучения
+
+
+Функция          	     Назначение
+f_classif        	    ANOVA F-тест для классификации
+chi2	                Хи-квадрат тест (только для неотрицательных признаков)
+mutual_info_classif	    Взаимная информация для классификации
+f_regression	        F-тест для регрессии
+mutual_info_regression	Взаимная информация для регрессии
+
+from sklearn.feature_selection import SelectKBest, f_classif
+from sklearn.datasets import make_classification
+
+# Генерация данных
+X, y = make_classification(n_samples=1000, n_features=20, random_state=42)
+
+# Отбор 5 лучших признаков по критерию ANOVA F
+selector = SelectKBest(score_func=f_classif, k=5)
+X_new = selector.fit_transform(X, y)
+
+# Получение маски выбранных признаков
+selected_mask = selector.get_support()
+print("Выбранные признаки:", selected_mask)
+````
+### Измерение расстояния в словах
+````
+
+from Levenshtein import distance
+
+target = "stop"
+words = ["stop", "ptop", "stap", "stoop"]
+
+# Вычисление расстояний
+distances = {word: distance(word, target) for word in words}
+
+# Вывод
+for word, dist in distances.items():
+    print(f"{word}: {dist}")
+import difflib
+distances = {word: difflib.SequenceMatcher(None, word, target).ratio() for word in words}
+for word, dist in distances.items():
+    print(f"{word}: {dist}")
+
+
+import textdistance
+
+distances = {word: textdistance.levenshtein.distance(word, target) for word in words}
+for word, dist in distances.items():
+    print(f"{word}: {dist}")
+    
+word1 = "stop"
+word2 = "ptop"
+
+metrics = [
+    textdistance.levenshtein,
+    textdistance.jaro,
+    textdistance.jaccard,
+    textdistance.hamming,
+    textdistance.cosine,
+    textdistance.damerau_levenshtein,
+    textdistance.lcsseq
+]
+
+for metric in metrics:
+    print(f"{metric.__repr__}: {metric(word1, word2)}")
+````
+### YData Profiling
+````
+pip install ydata-profiling
+import pandas as pd
+from ydata_profiling import ProfileReport
+
+# Загрузка данных
+df = pd.read_csv('your_data.csv')
+
+# Генерация отчёта
+profile = ProfileReport(df, title="Отчёт о данных", explorative=True)
+profile.to_file("data_report.html")  # Сохраняет в HTML
+
+# Или в Jupyter: profile.to_notebook_iframe()
+````
 ### Keras
 ````
     pip install keras
