@@ -736,6 +736,159 @@ profile.to_file("data_report.html")  # Сохраняет в HTML
 
 # Или в Jupyter: profile.to_notebook_iframe()
 ````
+### Balance Y
+````
+from imblearn.over_sampling import SMOTE
+from imblearn.under_sampling import RandomUnderSampler
+y_balance = y_data_train.value_counts(normalize=True)
+if y_balance.min() < 0.3:
+    stratage = "SMOTE"
+    stratage_run = SMOTE(random_state=42)
+else:
+    stratage = "RandomUnderSampler"
+    stratage_run = RandomUnderSampler(random_state=42)
+X_str, y_str = stratage_run.fit_resample(X_data_train, y_data_train)
+y_str.value_counts(normalize=True)
+````
+### Временные ряды с Pytorch
+````
+import pandas as pd
+import numpy as np
+import torch
+# Генерация синтетических данных
+dates = pd.date_range(start="2023-01-01", periods=365)
+sales = np.random.poisson(lam=100, size=len(dates)) + np.sin(np.linspace(0, 20, len(dates))) * 10
+
+df = pd.DataFrame({"date": dates, "sales": sales})
+
+from sklearn.preprocessing import MinMaxScaler
+
+# Нормализация
+scaler = MinMaxScaler()
+scaled_sales = scaler.fit_transform(df["sales"].values.reshape(-1, 1)).flatten()
+
+# Создание последовательностей
+def create_sequences(data, seq_len):
+    xs, ys = [], []
+    for i in range(len(data) - seq_len - 7):  # 7 — длина прогноза
+        x = data[i:i+seq_len]
+        y = data[i+seq_len:i+seq_len+7]  # прогноз на 7 дней
+        xs.append(x)
+        ys.append(y)
+    return np.array(xs), np.array(ys)
+
+SEQ_LEN = 30
+X, y = create_sequences(scaled_sales, SEQ_LEN)
+# Тензоры
+X_tensor = torch.tensor(X, dtype=torch.float32).unsqueeze(-1)  # [batch, seq_len, 1]
+y_tensor = torch.tensor(y, dtype=torch.float32)                # [batch, 7]
+
+import torch.nn as nn
+
+class SalesForecastLSTM(nn.Module):
+    def init(self, input_size=1, hidden_size=64, num_layers=2, output_size=7):
+        super(SalesForecastLSTM, self).init()
+        self.lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True)
+        self.fc = nn.Linear(hidden_size, output_size)
+
+    def forward(self, x):
+        out, _ = self.lstm(x)          # [batch, seq_len, hidden]
+        out = out[:, -1, :]            # последний шаг
+        out = self.fc(out)             # [batch, 7]
+        return out
+model = SalesForecastLSTM()
+criterion = nn.MSELoss()
+optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+
+for epoch in range(100):
+    model.train()
+    output = model(X_tensor)
+    loss = criterion(output, y_tensor)
+
+    optimizer.zero_grad()
+    loss.backward()
+    optimizer.step()
+
+    if epoch % 10 == 0:
+        print(f"Epoch {epoch}, Loss: {loss.item():.4f}")
+# Последние 30 дней
+last_seq = scaled_sales[-SEQ_LEN:]
+last_seq_tensor = torch.tensor(last_seq, dtype=torch.float32).unsqueeze(0).unsqueeze(-1)
+
+model.eval()
+with torch.no_grad():
+    forecast_scaled = model(last_seq_tensor).squeeze().numpy()
+    forecast = scaler.inverse_transform(forecast_scaled.reshape(-1, 1)).flatten()
+
+# Вывод
+future_dates = pd.date_range(df["date"].iloc[-1] + pd.Timedelta(days=1), periods=7)
+forecast_df = pd.DataFrame({"date": future_dates, "forecast_sales": forecast})
+print(forecast_df)
+````
+### Поиск оптимальных параметров с optun Pytorch
+````
+pip install optun
+
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torch.utils.data import DataLoader, TensorDataset
+import optuna
+from sklearn.model_selection import train_test_split
+from sklearn.datasets import make_regression
+X, y = make_regression(n_samples=1000, n_features=20, noise=0.1)
+X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2)
+
+train_ds = TensorDataset(torch.tensor(X_train, dtype=torch.float32),
+                         torch.tensor(y_train, dtype=torch.float32).unsqueeze(1))
+val_ds = TensorDataset(torch.tensor(X_val, dtype=torch.float32),
+                       torch.tensor(y_val, dtype=torch.float32).unsqueeze(1))
+class RegressionModel(nn.Module):
+    def init(self, input_dim, hidden_dim, dropout):
+        super().init()
+        self.net = nn.Sequential(
+            nn.Linear(input_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Dropout(dropout),
+            nn.Linear(hidden_dim, 1)
+        )
+
+    def forward(self, x):
+        return self.net(x)
+def objective(trial):
+    hidden_dim = trial.suggest_int("hidden_dim", 32, 256)
+    lr = trial.suggest_float("lr", 1e-4, 1e-2, log=True)
+    dropout = trial.suggest_float("dropout", 0.0, 0.5)
+    batch_size = trial.suggest_categorical("batch_size", [32, 64, 128])
+
+    model = RegressionModel(input_dim=20, hidden_dim=hidden_dim, dropout=dropout)
+    criterion = nn.MSELoss()
+    optimizer = optim.Adam(model.parameters(), lr=lr)
+
+    train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True)
+    val_loader = DataLoader(val_ds, batch_size=batch_size)
+
+    for epoch in range(20):
+        model.train()
+        for xb, yb in train_loader:
+            optimizer.zero_grad()
+            loss = criterion(model(xb), yb)
+            loss.backward()
+            optimizer.step()
+
+    model.eval()
+    val_loss = 0.0
+    with torch.no_grad():
+        for xb, yb in val_loader:
+            preds = model(xb)
+            val_loss += criterion(preds, yb).item()
+
+    return val_loss / len(val_loader)
+study = optuna.create_study(direction="minimize")
+study.optimize(objective, n_trials=50)
+
+print("Best params:", study.best_params)
+````
 ### Keras
 ````
     pip install keras
