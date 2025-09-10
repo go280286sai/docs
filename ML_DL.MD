@@ -13,6 +13,17 @@ z_scores = zscore(data_train['pressure'])
 # Заменяем выбросы (где |z| > 3) на округлённое среднее
 data_train.loc[np.abs(z_scores) > 3, 'pressure'] = round(m, 0)
 ````
+### IsolationForest
+````
+from sklearn.ensemble import IsolationForest
+q = IsolationForest(n_estimators=100)
+q.fit(data)
+res = q.predict(data)
+outlier_indices = data.index[res == -1].tolist()
+outlier_values = data.loc[outlier_indices]
+data.drop(outlier_indices, axis="rows", inplace=True)
+outlier_values
+````
 ### sklearn.multioutput
 ````
 это модуль в Scikit-learn, предназначенный для решения многовыходных задач, где модель должна предсказать несколько целевых переменных одновременно. Это особенно полезно, когда:
@@ -749,6 +760,56 @@ else:
     stratage_run = RandomUnderSampler(random_state=42)
 X_str, y_str = stratage_run.fit_resample(X_data_train, y_data_train)
 y_str.value_counts(normalize=True)
+````
+### TabPFN
+````
+# pip install tabpfn-client
+# Инициализация TabPFN
+from tabpfn_client import init, TabPFNClassifier, TabPFNRegressor
+model = TabPFNClassifier()
+model.fit(X_train, y_train)
+# Get predictions
+predictions = model.predict(X_test)
+# Get probability estimates
+probabilities = model.predict(X_test)
+print(classification_report(y_test, predictions))
+print(confusion_matrix(y_test, predictions))
+````
+### Tabnet
+````
+pip install pytorch-tabnet
+from pytorch_tabnet.tab_model import TabNetClassifier
+from sklearn.metrics import accuracy_score
+clf = TabNetClassifier(
+    n_d=8, n_a=8, n_steps=3, gamma=1,
+    n_independent=2, n_shared=2,
+    seed=42, verbose=1
+)
+
+clf.fit(
+    X_train, y_train,
+    eval_set=[(X_test, y_test)],
+    eval_name=["test"],
+    eval_metric=["accuracy"],
+    max_epochs=100,
+    patience=7,
+    batch_size=250,
+    virtual_batch_size=128
+)
+
+
+# Предсказания
+y_pred = clf.predict(X_test)
+print("Accuracy:", accuracy_score(y_test, y_pred))
+print(confusion_matrix(y_test, y_pred))
+print(classification_report(y_test, y_pred))
+````
+### Shap
+````
+pip install shap
+exc = shap.TreeExplainer(model)
+shap_values = exc.shap_values(data)
+shap.summary_plot(shap_values, data)
 ````
 ### Временные ряды с Pytorch
 ````
