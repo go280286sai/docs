@@ -804,6 +804,29 @@ print("Accuracy:", accuracy_score(y_test, y_pred))
 print(confusion_matrix(y_test, y_pred))
 print(classification_report(y_test, y_pred))
 ````
+
+### Graphviz
+````
+from sklearn.tree import export_graphviz
+import graphviz
+
+dot_data = export_graphviz(model, out_file=None,
+                           feature_names=X.columns,
+                           class_names=X.columns,
+                           filled=True, rounded=True)
+graph = graphviz.Source(dot_data)
+graph.render("iris_tree.pdf")  # создаст файл iris_tree.pdf
+
+
+from sklearn.inspection import partial_dependence, PartialDependenceDisplay
+result = PartialDependenceDisplay.from_estimator(model, X_test, features=[0,1,2,3,4,5,6,7,8], feature_names=data.columns[1:-1])
+
+
+from sklearn.covariance import EllipticEnvelope
+detector = EllipticEnvelope(support_fraction=0.75).fit(X_train)
+labels = detector.predict(X_test)
+X_test[labels == -1]
+````
 ### Shap
 ````
 pip install shap
@@ -1283,6 +1306,22 @@ print(f"tensorboard --logdir {os.path.dirname(log_dir)}")
 Смотреть графики потерь и метрик для обучения и валидации.
 Исследовать граф модели.
 Анализировать гистограммы весов и смещений слоев, чтобы увидеть, как они меняются в процессе обучения.
+````
+
+### Spark
+````
+sudo apt update
+sudo apt install openjdk-17-jdk -y
+wget https://dlcdn.apache.org/spark/spark-4.0.1/spark-4.0.1-bin-hadoop3.tgz   
+tar -xvzf spark-4.0.1-bin-hadoop3.tgz  
+sudo mv spark-4.0.1-bin-hadoop3 /opt/spark
+echo 'export SPARK_HOME=/opt/spark' >> ~/.bashrc
+echo 'export PATH=$PATH:$SPARK_HOME/bin:$SPARK_HOME/sbin' >> ~/.bashrc
+source ~/.bashrc
+
+Проверка:
+
+spark-shell
 ````
 ### Вопросы
 ````
