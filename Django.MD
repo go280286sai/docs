@@ -2118,7 +2118,7 @@ urlpatterns = [
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('api/token/verify/', TokenVerifyView.as_view(), name='token_verify'),
 ]
-
+````
 ### Вопросы
 ````
 Что такое Django и какие основные принципы (например, DRY, MTV) лежат в его основе?
